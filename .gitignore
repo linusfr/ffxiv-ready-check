@@ -1,0 +1,25 @@
+# Build output
+src/bin/
+src/obj/
+
+# Dalamud auto-generated assembly info
+*.AssemblyInfo.cs
+*.AssemblyAttributes.cs
+
+# Loose build artifacts
+ReadyCheck.dll
+ReadyCheck.zip
+pack/
+
+# AI context files
+CLAUDE.md
+AGENTS.md
+.ai-session-state.md
+
+# IDE / OS
+.vs/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db

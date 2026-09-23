@@ -1,0 +1,33 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <!-- Overridden by CI: dotnet build -p:Version=$(semantic-release output) -->
+    <Version Condition="'$(Version)' == ''">1.0.0</Version>
+    <AssemblyName>ReadyCheck</AssemblyName>
+    <RootNamespace>ReadyCheck</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- The whole plugin is pointer work against FFXIVClientStructs. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- DalamudPackager manifest fields -->
+  <PropertyGroup>
+    <Author>linusfr</Author>
+    <Name>Ready Check</Name>
+    <Punchline>Announces the selected duty in party chat when you start a ready check.</Punchline>
+    <Description>Hooks the game's own ready check so that clicking Ready Check — or typing /readycheck — first posts the duty you have selected in the Duty Finder to party chat. Announcement only: it never answers a ready check for you.</Description>
+    <ApplicableVersion>any</ApplicableVersion>
+    <DalamudApiLevel>15</DalamudApiLevel>
+    <Tags>party;duty;utility;chat;readycheck</Tags>
+    <RepoUrl>https://github.com/linusfr/ffxiv-ready-check</RepoUrl>
+    <!-- DalamudPackager writes this into the shipped manifest; the installer
+         fetches the image from here, so the zip does not carry it. -->
+    <IconUrl>https://raw.githubusercontent.com/linusfr/ffxiv-ready-check/main/images/icon.png</IconUrl>
+  </PropertyGroup>
+
+  <!-- Dalamud shows images/icon.png next to the DLL for local and dev installs;
+       repo installs use IconUrl from the manifest. Ship both. -->
+  <ItemGroup>
+    <Content Include="..\images\icon.png" Link="images\icon.png"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

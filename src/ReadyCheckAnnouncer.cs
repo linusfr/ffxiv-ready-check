@@ -1,0 +1,203 @@
+using System;
+using System.Collections.Generic;
+
+using Dalamud.Hooking;
+using Dalamud.Plugin.Services;
+
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+
+namespace ReadyCheck;
+
+/// <summary>
+/// Detects a ready check being started and posts the duty to party chat just before
+/// the game sends the check itself.
+///
+/// <para>Dalamud has no ready-check event. It has <c>IDutyState</c>, but that fires
+/// on duty start, and <c>AgentReadyCheck.ReadyCheckEntries</c> only fills in once the
+/// check is already running — both are too late to satisfy "announce before the check",
+/// and the second would also fire for checks other people started.</para>
+///
+/// <para>So this hooks <c>AgentReadyCheck.InitiateReadyCheck</c>. It is the single
+/// client-side entry point: the party list's Ready Check button, the Duty Finder's,
+/// and <c>/readycheck</c> all reach it, and nothing else does. Hooking it therefore
+/// covers every route without a second implementation of the feature, and it is only
+/// ever reached on the client that pressed the button — a check someone *else* starts
+/// arrives as a packet and never calls this, so there is no way to announce another
+/// player's check by accident.</para>
+///
+/// <para>The detour sends first and calls the original second. Both are outbound
+/// packets on the same frame, so ordering them this way is what puts the message in
+/// the party's chat log above the ready-check prompt rather than below it. The
+/// original is called from a <c>finally</c>: whatever this plugin gets wrong, the
+/// game's own ready check still happens.</para>
+/// </summary>
+internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
+{
+    /// <summary>
+    /// Ignore a second initiation inside this window. The game only calls
+    /// InitiateReadyCheck once per check, so this is insurance against a future
+    /// client calling it twice (or another plugin driving it) rather than a known
+    /// duplicate — cheap, and the alternative is double-posting to the party.
+    /// </summary>
+    private static readonly TimeSpan Debounce = TimeSpan.FromSeconds(3);
+
+    private readonly Configuration                                    _config;
+    private readonly IPluginLog                                       _log;
+    private readonly IPartyList                                       _party;
+    private readonly Hook<AgentReadyCheck.Delegates.InitiateReadyCheck> _hook;
+
+    private DateTime _lastAnnounced = DateTime.MinValue;
+
+    public ReadyCheckAnnouncer(Configuration config, IGameInteropProvider interop, IPluginLog log, IPartyList party)
+    {
+        _config = config;
+        _log    = log;
+        _party  = party;
+
+        _hook = interop.HookFromAddress<AgentReadyCheck.Delegates.InitiateReadyCheck>(
+            (nint)AgentReadyCheck.MemberFunctionPointers.InitiateReadyCheck,
+            OnInitiateReadyCheck);
+        _hook.Enable();
+    }
+
+    private void OnInitiateReadyCheck(AgentReadyCheck* agent)
+    {
+        try
+        {
+            Announce();
+        }
+        catch (Exception ex)
+        {
+            // A throw here would propagate into game code. Swallow it, log it, and
+            // let the ready check proceed untouched.
+            _log.Error(ex, "Ready check announcement failed.");
+        }
+        finally
+        {
+            _hook.Original(agent);
+        }
+    }
+
+    private void Announce()
+    {
+        if (!_config.Enabled || !_config.AnnounceToParty)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastAnnounced < Debounce)
+        {
+            _config.Debug(_log, "Ready check announcement skipped: debounced.");
+            return;
+        }
+
+        // /p prints "You are not in a party." locally rather than leaking to Say, but
+        // there is no reason to make the game say it.
+        if (_party.Length == 0)
+        {
+            _config.Debug(_log, "Ready check announcement skipped: not in a party.");
+            return;
+        }
+
+        var selection = DutyFinder.Read();
+        _config.Debug(_log, $"Duty Finder selection: {selection.Count} entr{(selection.Count == 1 ? "y" : "ies")}, roulette={selection.AnyRoulette}.");
+
+        var message = Compose(selection);
+        if (message == null)
+            return;
+
+        var sent = PartyChat.Send(message);
+        if (sent == null)
+        {
+            _config.Debug(_log, "Ready check announcement produced no sendable text.");
+            return;
+        }
+
+        _lastAnnounced = now;
+        _config.Debug(_log, $"Sent: {sent}");
+    }
+
+    /// <summary>
+    /// Everything a real ready check would do except send the packet: is the hook
+    /// live, what is selected, and what would go out. Exists because the real path
+    /// cannot be exercised alone — the game will not start a ready check without a
+    /// party — so without this the first test of the plugin is also its first use in
+    /// front of seven other people.
+    /// </summary>
+    public IEnumerable<string> DryRun()
+    {
+        yield return _hook.IsEnabled
+            ? $"Hook installed and enabled at 0x{_hook.Address:X}."
+            : "Hook is NOT enabled — announcements will not fire.";
+
+        if (!_config.Enabled)
+            yield return "Plugin is disabled in settings; a ready check would do nothing.";
+        else if (!_config.AnnounceToParty)
+            yield return "Party announcement is turned off in settings.";
+
+        var selection = DutyFinder.Read();
+        if (selection.IsEmpty)
+        {
+            yield return "Duty Finder: nothing selected.";
+        }
+        else
+        {
+            yield return $"Duty Finder: {selection.Count} selected.";
+            // Per entry rather than a joined line: this is where you check that the
+            // level and the Adventurer in Need match what the Duty Finder is showing.
+            foreach (var e in selection.Entries)
+                yield return $"  {e.Name} — roulette={e.IsRoulette}, Lv.{e.Level}, i{e.ItemLevel}, inNeed={e.InNeed}";
+        }
+
+        var message = Compose(selection);
+        var line    = message == null ? null : PartyChat.BuildLine(message);
+
+        yield return line == null
+            ? "Would send: nothing."
+            : $"Would send: {line}";
+
+        // The party check is reported rather than short-circuiting, so the detection
+        // above is still visible when testing alone — which is the whole point.
+        if (_party.Length == 0)
+            yield return "You are not in a party, so a real ready check would stay silent.";
+    }
+
+    /// <summary>
+    /// Builds the line to send, or null to stay quiet. Every case that cannot name a
+    /// duty honestly ends up at <see cref="Configuration.AnnounceWithoutDuty"/>, which
+    /// is off — a ready check with no message is better than one that names the wrong
+    /// duty or a duty that was never selected.
+    /// </summary>
+    private string? Compose(DutySelection selection)
+    {
+        if (selection.IsEmpty)
+            return _config.AnnounceWithoutDuty ? _config.FallbackMessage : null;
+
+        if (selection.AnyRoulette && !_config.AnnounceRoulettes)
+            return _config.AnnounceWithoutDuty ? _config.FallbackMessage : null;
+
+        var duty = selection.Count == 1
+            ? Describe(selection.Entries[0])
+            : _config.ListMultipleDuties
+                ? string.Join(", ", selection.Names)
+                : $"{selection.Count} duties selected";
+
+        return _config.MessageFormat.Replace("{duty}", duty, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// One duty with its requirements and Adventurer in Need appended, as the Duty
+    /// Finder shows them. Only used for a single selection: hanging a level on each
+    /// of eight names, or on a bare count, is noise rather than information.
+    /// </summary>
+    private string Describe(DutyEntry entry)
+    {
+        var detail = entry.Detail(_config.AnnounceRequirements, _config.AnnounceAdventurerInNeed);
+        return detail == null ? entry.Name : $"{entry.Name} ({detail})";
+    }
+
+    public void Dispose()
+    {
+        _hook.Disable();
+        _hook.Dispose();
+    }
+}
