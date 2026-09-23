@@ -4,7 +4,7 @@
     "Name": "Ready Check",
     "InternalName": "ReadyCheck",
     "Punchline": "Announces the selected duty in party chat when you start a ready check.",
-    "Description": "Hooks the game's own ready check so that clicking Ready Check — or typing /readycheck — first posts the duty you have selected in the Duty Finder to party chat. Announcement only: it never answers a ready check for you.",
+    "Description": "Hooks the game's own ready check so that clicking Ready Check \u2014 or typing /readycheck \u2014 first posts the duty you have selected in the Duty Finder to party chat. Announcement only: it never answers a ready check for you.",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
     "Tags": [
@@ -19,7 +19,7 @@
     "DownloadLinkInstall": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
     "DownloadLinkUpdate": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
     "DownloadLinkTesting": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
-    "LastUpdated": 0,
+    "LastUpdated": 1790182695,
     "IconUrl": "https://raw.githubusercontent.com/linusfr/ffxiv-ready-check/main/images/icon.png"
   }
 ]
