@@ -1,10 +1,13 @@
-# Ready Check
-
-[![latest](https://img.shields.io/github/v/release/linusfr/ffxiv-ready-check?sort=semver&display_name=tag&label=latest&color=blue&cacheSeconds=300)](https://github.com/linusfr/ffxiv-ready-check/releases/latest)
-[![ci](https://img.shields.io/github/actions/workflow/status/linusfr/ffxiv-ready-check/ci.yml?branch=main&label=ci&cacheSeconds=300)](https://github.com/linusfr/ffxiv-ready-check/actions/workflows/ci.yml)
-[![licence](https://img.shields.io/github/license/linusfr/ffxiv-ready-check?color=blue)](LICENSE)
-
-> Says what you're about to queue for, so nobody has to ask.
+<div align="center">
+	<img src="images/icon.png" alt="Ready Check icon" width="128">
+	<h1>Ready Check</h1>
+	<p>Says what you're about to queue for, so nobody has to ask.</p>
+	<p>
+		<a href="https://github.com/linusfr/ffxiv-ready-check/releases/latest"><img src="https://img.shields.io/github/v/release/linusfr/ffxiv-ready-check?sort=semver&amp;display_name=tag&amp;label=latest&amp;color=blue&amp;cacheSeconds=300" alt="Latest release"></a>
+		<a href="https://github.com/linusfr/ffxiv-ready-check/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/linusfr/ffxiv-ready-check/ci.yml?branch=main&amp;label=ci&amp;cacheSeconds=300" alt="CI status"></a>
+		<a href="LICENSE"><img src="https://img.shields.io/github/license/linusfr/ffxiv-ready-check?color=blue" alt="MIT license"></a>
+	</p>
+</div>
 
 A ready check tells the party someone is asking, not what for. This puts the
 answer in party chat a beat before the prompt arrives:
@@ -36,13 +39,14 @@ Crystalline Conflict, chocobo racing).
 
 ## Install
 
-`/xlsettings` → **Experimental** → Custom Plugin Repositories → paste, `+`, save:
+In `/xlsettings`, open **Experimental** > **Custom Plugin Repositories**, paste
+this URL, click `+`, then save:
 
 ```
 https://raw.githubusercontent.com/linusfr/ffxiv-ready-check/main/pluginmaster.json
 ```
 
-Then `/xlplugins` → search **Ready Check** → Install. Or grab
+Then open `/xlplugins`, search for **Ready Check**, and select **Install**. Or grab
 [`ReadyCheck.zip`](https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip)
 and extract into `~/.xlcore/devPlugins/ReadyCheck/` (Linux) or
 `%AppData%\XIVLauncher\devPlugins\ReadyCheck\` (Windows) — a manual zip never
@@ -152,6 +156,6 @@ edit it there, not as a file.
 `feat:` → minor, `feat!:` → major. The first release is always `1.0.0` whatever
 the message says. CI tags, attaches the zip, and updates `pluginmaster.json`.
 
-## Licence
+## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT, see [`LICENSE`](LICENSE).
