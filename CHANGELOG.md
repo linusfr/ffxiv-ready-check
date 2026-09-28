@@ -7,4 +7,3 @@
 #### Bug Fixes
 
 * initial plugin implementation (5316d076)
-
