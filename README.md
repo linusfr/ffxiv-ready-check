@@ -13,8 +13,9 @@ answer in party chat a beat before the prompt arrives:
 [Party] Ready check: Leveling (Lv. 16, healer in need)
 ```
 
-Then the game's own ready check happens, unchanged. Same button, no extra window,
-and it never answers a ready check for you.
+Then the game's own ready check happens, unchanged. Same button, no extra window.
+It only announces checks you initiate, stays silent inside duties, and never
+answers a ready check for you.
 
 ## Output
 
@@ -84,17 +85,17 @@ alone; everything before them can.
 
 ## How it works
 
-**Catching the check.** Dalamud has no ready-check event, and
-`AgentReadyCheck.ReadyCheckEntries` fills in only once the check is running — and
-for checks other people started. So this hooks
-`AgentReadyCheck.InitiateReadyCheck`, the one client-side function the party
-list's button, the Duty Finder's, and `/readycheck` all reach. Hooking it covers
-every route, and since it only runs on the client that pressed the button, it
-cannot announce somebody else's check. No screen coordinates, no polling.
+**Catching the check.** Dalamud has no ready-check event, so this hooks
+`AgentReadyCheck.InitiateReadyCheck`, the client-side function reached by the
+party list button, the Duty Finder button, and `/readycheck`. The game also calls
+it when another player's check arrives. On that incoming path,
+`ReadyCheckEntries` is already populated; Ready Check detects that state and stays
+silent. Locally initiated checks reach the hook before those entries exist.
 
-The detour sends, then calls the original — both are outbound packets on the same
-frame, so that order puts the line above the prompt. The original is called from
-a `finally`, so whatever the plugin gets wrong, the ready check still happens.
+The detour sends, then calls the original. The original is called from a
+`finally`, so whatever the plugin gets wrong, the ready check still happens.
+Checks started inside a duty are deliberately left unannounced: the selected or
+queued Duty Finder entry is stale context once the party is already inside.
 
 **Reading the selection.** `AgentContentsFinder.SelectedContent` is a vector of
 `ContentsId`, one per ticked entry, each typed `Regular` or `Roulette`. Single,
@@ -124,7 +125,9 @@ patch can move.
   route out is `UIModule.ProcessChatBoxEntry` with a `/p` prefix — that prefix is
   the whole guarantee of channel, which is why the message is stripped of line
   breaks and leading slashes first. It cannot reach Say, Alliance or FC.
-- **Only your own ready checks.** One someone else starts never calls the hook.
+- **Only your own ready checks.** Incoming checks have populated ready-check
+  entries and are ignored.
+- Checks started after entering a duty are ignored.
 - Party Finder listings and preset parties are not Duty Finder selections; the
   plugin stays quiet.
 - Struct offsets come from FFXIVClientStructs, so a patch may need a Dalamud

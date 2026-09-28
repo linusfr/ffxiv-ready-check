@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 
@@ -17,13 +18,10 @@ namespace ReadyCheck;
 /// check is already running — both are too late to satisfy "announce before the check",
 /// and the second would also fire for checks other people started.</para>
 ///
-/// <para>So this hooks <c>AgentReadyCheck.InitiateReadyCheck</c>. It is the single
-/// client-side entry point: the party list's Ready Check button, the Duty Finder's,
-/// and <c>/readycheck</c> all reach it, and nothing else does. Hooking it therefore
-/// covers every route without a second implementation of the feature, and it is only
-/// ever reached on the client that pressed the button — a check someone *else* starts
-/// arrives as a packet and never calls this, so there is no way to announce another
-/// player's check by accident.</para>
+/// <para>This hooks <c>AgentReadyCheck.InitiateReadyCheck</c>, which the party list's
+/// Ready Check button, the Duty Finder's, and <c>/readycheck</c> all reach. The client
+/// also calls it after receiving another player's check, so the detour distinguishes
+/// that path by the already-populated ready-check entries and stays silent.</para>
 ///
 /// <para>The detour sends first and calls the original second. Both are outbound
 /// packets on the same frame, so ordering them this way is what puts the message in
@@ -43,16 +41,23 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
 
     private readonly Configuration                                    _config;
     private readonly IPluginLog                                       _log;
-    private readonly IPartyList                                       _party;
+    private readonly IPartyList                                         _party;
+    private readonly ICondition                                         _condition;
     private readonly Hook<AgentReadyCheck.Delegates.InitiateReadyCheck> _hook;
 
     private DateTime _lastAnnounced = DateTime.MinValue;
 
-    public ReadyCheckAnnouncer(Configuration config, IGameInteropProvider interop, IPluginLog log, IPartyList party)
+    public ReadyCheckAnnouncer(
+        Configuration config,
+        IGameInteropProvider interop,
+        IPluginLog log,
+        IPartyList party,
+        ICondition condition)
     {
-        _config = config;
-        _log    = log;
-        _party  = party;
+        _config    = config;
+        _log       = log;
+        _party     = party;
+        _condition = condition;
 
         _hook = interop.HookFromAddress<AgentReadyCheck.Delegates.InitiateReadyCheck>(
             (nint)AgentReadyCheck.MemberFunctionPointers.InitiateReadyCheck,
@@ -64,7 +69,10 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
     {
         try
         {
-            Announce();
+            if (HasActiveEntries(agent))
+                _config.Debug(_log, "Ready check announcement skipped: check was received from another player.");
+            else
+                Announce();
         }
         catch (Exception ex)
         {
@@ -78,10 +86,27 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
         }
     }
 
+    private static bool HasActiveEntries(AgentReadyCheck* agent)
+    {
+        foreach (ref var entry in agent->ReadyCheckEntries)
+        {
+            if (entry.ContentId != 0 && entry.Status != ReadyCheckStatus.Unknown)
+                return true;
+        }
+
+        return false;
+    }
+
     private void Announce()
     {
         if (!_config.Enabled || !_config.AnnounceToParty)
             return;
+
+        if (IsInDuty())
+        {
+            _config.Debug(_log, "Ready check announcement skipped: already inside a duty.");
+            return;
+        }
 
         var now = DateTime.UtcNow;
         if (now - _lastAnnounced < Debounce)
@@ -149,7 +174,10 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
         }
 
         var message = Compose(selection);
-        var line    = message == null ? null : PartyChat.BuildLine(message);
+        var line    = message == null || IsInDuty() ? null : PartyChat.BuildLine(message);
+
+        if (IsInDuty())
+            yield return "Already inside a duty, so a real ready check would stay silent.";
 
         yield return line == null
             ? "Would send: nothing."
@@ -167,6 +195,11 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
     /// is off — a ready check with no message is better than one that names the wrong
     /// duty or a duty that was never selected.
     /// </summary>
+    private bool IsInDuty() =>
+        _condition[ConditionFlag.BoundByDuty] ||
+        _condition[ConditionFlag.BoundByDuty56] ||
+        _condition[ConditionFlag.BoundByDuty95];
+
     private string? Compose(DutySelection selection)
     {
         if (selection.IsEmpty)
