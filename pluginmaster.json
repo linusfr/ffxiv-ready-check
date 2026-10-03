@@ -14,12 +14,12 @@
       "chat",
       "readycheck"
     ],
-    "AssemblyVersion": "1.0.1.0",
+    "AssemblyVersion": "1.1.0.0",
     "RepoUrl": "https://github.com/linusfr/ffxiv-ready-check",
     "DownloadLinkInstall": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
     "DownloadLinkUpdate": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
     "DownloadLinkTesting": "https://github.com/linusfr/ffxiv-ready-check/releases/latest/download/ReadyCheck.zip",
-    "LastUpdated": 1790612851,
+    "LastUpdated": 1791022125,
     "IconUrl": "https://raw.githubusercontent.com/linusfr/ffxiv-ready-check/main/images/icon.png"
   }
 ]

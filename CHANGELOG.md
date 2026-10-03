@@ -1,11 +1,12 @@
-## 1.0.1 (2026-09-28)
+## 1.1.0 (2026-10-03)
 
-#### Bug Fixes
+#### Feature
 
-* prek (dce6a346)
-* ready check conditions (beba6bea)
+* optionally announce the job you are on (fe859923)
 
 #### Chores
 
-* remove unused file (4d5e6307)
-* pluginmaster 1.0.0 [skip ci] (c028444c)
+* run prek (a523299c)
+* align (70b1fc35)
+* pluginmaster 1.0.1 [skip ci] (77857019)
+
