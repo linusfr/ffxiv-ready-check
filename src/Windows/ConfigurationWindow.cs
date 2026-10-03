@@ -57,6 +57,18 @@ public sealed class ConfigurationWindow : IDisposable
         ImGui.TextDisabled("  Ready check: Leveling (Lv. 16, healer in need)");
         ImGui.TextDisabled("  Roulettes only, and only where the game shows one.");
 
+        Section("Your job");
+        Toggle("Name the job you are on", Config.AnnounceOwnJob, v => Config.AnnounceOwnJob = v);
+        if (Config.AnnounceOwnJob)
+        {
+            Toggle("  Say the role too", Config.AnnounceOwnRole, v => Config.AnnounceOwnRole = v);
+            ImGui.TextDisabled(Config.AnnounceOwnRole
+                ? "  Ready check: Leveling (Lv. 16, healer in need) — on WHM (healer)"
+                : "  Ready check: Leveling (Lv. 16, healer in need) — on WHM");
+            ImGui.TextDisabled("  Tells the party which slot is taken. Put {job} in the");
+            ImGui.TextDisabled("  message to place it yourself.");
+        }
+
         Section("When the duty cannot be determined");
         Toggle("Announce anyway", Config.AnnounceWithoutDuty, v => Config.AnnounceWithoutDuty = v);
         if (Config.AnnounceWithoutDuty)

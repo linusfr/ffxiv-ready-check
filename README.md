@@ -28,6 +28,7 @@ answers a ready check for you.
 | With an item level requirement | `Ready check: The Great Gubal Library (Lv. 59, i120)` |
 | Roulette with an Adventurer in Need | `Ready check: Leveling (Lv. 16, healer in need)` |
 | Several duties | `Ready check: 3 duties selected` |
+| With your job announced | `Ready check: Leveling (Lv. 16, healer in need) — on WHM (healer)` |
 | Several, *List every selected duty* | `Ready check: The Aurum Vale, Haukke Manor, Sastasha` |
 | Nothing selected | *nothing* |
 

@@ -42,6 +42,7 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
     private readonly Configuration                                    _config;
     private readonly IPluginLog                                       _log;
     private readonly IPartyList                                         _party;
+    private readonly IPlayerState                                       _player;
     private readonly ICondition                                         _condition;
     private readonly Hook<AgentReadyCheck.Delegates.InitiateReadyCheck> _hook;
 
@@ -52,11 +53,13 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
         IGameInteropProvider interop,
         IPluginLog log,
         IPartyList party,
+        IPlayerState player,
         ICondition condition)
     {
         _config    = config;
         _log       = log;
         _party     = party;
+        _player    = player;
         _condition = condition;
 
         _hook = interop.HookFromAddress<AgentReadyCheck.Delegates.InitiateReadyCheck>(
@@ -159,6 +162,10 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
         else if (!_config.AnnounceToParty)
             yield return "Party announcement is turned off in settings.";
 
+        yield return _config.AnnounceOwnJob
+            ? $"Own job: {OwnJob.Describe(_player, _config.AnnounceOwnRole) ?? "unreadable"}."
+            : "Own job: not announced.";
+
         var selection = DutyFinder.Read();
         if (selection.IsEmpty)
         {
@@ -214,7 +221,31 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
                 ? string.Join(", ", selection.Names)
                 : $"{selection.Count} duties selected";
 
-        return _config.MessageFormat.Replace("{duty}", duty, StringComparison.Ordinal);
+        var line = _config.MessageFormat.Replace("{duty}", duty, StringComparison.Ordinal);
+        return WithJob(line);
+    }
+
+    /// <summary>
+    /// Puts the job into the line: where the format asks for it, or appended when it
+    /// does not mention it. A format that places "{job}" itself wins, so someone who
+    /// has written their own line is never given a second copy on the end.
+    /// </summary>
+    private string WithJob(string line)
+    {
+        var mentioned = line.Contains("{job}", StringComparison.Ordinal);
+        if (!_config.AnnounceOwnJob)
+            return mentioned ? line.Replace("{job}", "", StringComparison.Ordinal).TrimEnd() : line;
+
+        var job = OwnJob.Describe(_player, _config.AnnounceOwnRole);
+        if (job == null)
+        {
+            _config.Debug(_log, "Own job not announced: no character to read it from.");
+            return mentioned ? line.Replace("{job}", "", StringComparison.Ordinal).TrimEnd() : line;
+        }
+
+        return mentioned
+            ? line.Replace("{job}", job, StringComparison.Ordinal)
+            : $"{line} — on {job}";
     }
 
     /// <summary>

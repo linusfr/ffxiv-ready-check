@@ -18,6 +18,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPartyList              PartyList       { get; private set; } = null!;
     [PluginService] internal static IChatGui                ChatGui         { get; private set; } = null!;
     [PluginService] internal static ICondition              Condition       { get; private set; } = null!;
+    [PluginService] internal static IPlayerState            PlayerState     { get; private set; } = null!;
 
     internal Configuration Config { get; }
 
@@ -31,7 +32,7 @@ public sealed class Plugin : IDalamudPlugin
         Config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         _configWindow = new ConfigurationWindow(this);
-        _announcer    = new ReadyCheckAnnouncer(Config, GameInterop, Log, PartyList, Condition);
+        _announcer    = new ReadyCheckAnnouncer(Config, GameInterop, Log, PartyList, PlayerState, Condition);
 
         CommandManager.AddHandler(CmdConfig, new CommandInfo(OnConfigCommand)
         {
