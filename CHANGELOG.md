@@ -1,11 +1,11 @@
-## 1.1.0 (2026-10-03)
+## 1.1.1 (2026-10-07)
 
-#### Feature
+#### Bug Fixes
 
-* optionally announce the job you are on (fe859923)
+* prek (fea83386)
+* announce every self-started ready check, not just the first (cfc4e3a8)
 
 #### Chores
 
-* run prek (a523299c)
-* align (70b1fc35)
-* pluginmaster 1.0.1 [skip ci] (77857019)
+* pluginmaster 1.1.0 [skip ci] (836f6b21)
+
