@@ -21,7 +21,7 @@ namespace ReadyCheck;
 /// <para>This hooks <c>AgentReadyCheck.InitiateReadyCheck</c>, which the party list's
 /// Ready Check button, the Duty Finder's, and <c>/readycheck</c> all reach. The client
 /// also calls it after receiving another player's check, so the detour distinguishes
-/// that path by the already-populated ready-check entries and stays silent.</para>
+/// that path by entries already awaiting a response and stays silent.</para>
 ///
 /// <para>The detour sends first and calls the original second. Both are outbound
 /// packets on the same frame, so ordering them this way is what puts the message in
@@ -89,11 +89,17 @@ internal sealed unsafe class ReadyCheckAnnouncer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Only <see cref="ReadyCheckStatus.AwaitingResponse"/> marks a check in flight.
+    /// The entries keep the previous check's Ready/NotReady results after it ends, so
+    /// testing for any non-Unknown status mistakes every later self-started check for
+    /// a received one.
+    /// </summary>
     private static bool HasActiveEntries(AgentReadyCheck* agent)
     {
         foreach (ref var entry in agent->ReadyCheckEntries)
         {
-            if (entry.ContentId != 0 && entry.Status != ReadyCheckStatus.Unknown)
+            if (entry.ContentId != 0 && entry.Status == ReadyCheckStatus.AwaitingResponse)
                 return true;
         }
 
